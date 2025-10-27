@@ -281,19 +281,40 @@ function tens(n){return Math.floor(n/10);}
 function ones(n){return n%10;}
 function normalizeExpr(expr){
   return String(expr||"")
+    // 공백 제거
     .replace(/[\u00A0\u1680\u2000-\u200B\u202F\u205F\u3000\s]+/g,"")
+    // 특수기호 통합
     .replace(/[＋﹢➕]/g,"+")
+    .replace(/[－﹣−–—₋]/g,"-")
+    .replace(/[×xX*·⋅]/g,"*")
+    .replace(/[÷⁄／／]/g,"/")
+    // 한글 조합 지원
     .replace(/명성/g,"명+성")
     .replace(/일수/g,"일+수")
+    // 연속 기호 정리
     .replace(/\++/g,"+")
     .replace(/^\+|\+$/g,"");
 }
+
+/* 자리수식 평가 */
 function evalDigitExpr(expr,rep,day){
-  var e=normalizeExpr(expr); if(!e) return null;
-  var map={"명":tens(rep),"성":ones(rep),"일":tens(day),"수":ones(day)};
-  var parts=e.split("+"); var sum=0;
-  for(var i=0;i<parts.length;i++){var t=parts[i]; if(!map.hasOwnProperty(t)) return null; sum+=map[t];}
-  return sum;
+  var e=normalizeExpr(expr);
+  if(!e) return null;
+  var map={"명":Math.floor(rep/10),"성":rep%10,"일":Math.floor(day/10),"수":day%10};
+
+  // 토큰을 실제 숫자로 대체
+  var jsExpr=e.replace(/[명성일수]/g, m => map[m]);
+
+  try {
+    // eval로 수식 계산 (안전하게 숫자/연산자만 허용)
+    if(/^[0-9+\-*/().]+$/.test(jsExpr)){
+      return Function('"use strict";return ('+jsExpr+')')();
+    } else {
+      return null;
+    }
+  } catch {
+    return null;
+  }
 }
 
 /* 계산 로직 */
