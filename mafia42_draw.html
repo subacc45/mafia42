@@ -1,0 +1,297 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>마피아42 카드 드로우</title>
+<style>
+  :root{--bg:#0f172a;--card:#0b1220;--accent:#7c3aed;--muted:#94a3b8;--panel:#0b1220}
+  html,body{height:100%;margin:0;font-family:Inter,Roboto,Apple SD Gothic Neo,맑은고딕,sans-serif;background:linear-gradient(180deg,#07112b 0,#071129 100%);color:#e6eef8}
+  .wrap{max-width:980px;margin:28px auto;padding:22px;border-radius:12px;background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));box-shadow:0 6px 30px rgba(2,6,23,0.6)}
+  h1{margin:0 0 10px;font-size:20px}
+  p.lead{margin:0 0 18px;color:var(--muted)}
+  .controls{display:flex;gap:12px;flex-wrap:wrap}
+  .card{background:var(--panel);padding:12px;border-radius:10px;flex:1;min-width:220px}
+  select,input[type=number]{width:100%;padding:8px;border-radius:8px;border:1px solid rgba(255,255,255,0.06);background:transparent;color:inherit}
+  button{background:var(--accent);border:none;color:white;padding:8px 12px;border-radius:10px;cursor:pointer;font-weight:600}
+  button.secondary{background:transparent;border:1px solid rgba(255,255,255,0.06)}
+  .results{margin-top:18px}
+  table{width:100%;border-collapse:collapse;font-size:14px}
+  th,td{padding:8px;border-bottom:1px dashed rgba(255,255,255,0.03);text-align:left}
+  .muted{color:var(--muted);font-size:13px}
+  .small{font-size:13px;color:var(--muted)}
+  .row{display:flex;gap:10px;align-items:center}
+  pre{white-space:pre-wrap;word-break:break-word;background:#05102a;padding:10px;border-radius:8px;color:#cfe9ff}
+  .footer{margin-top:12px;color:var(--muted);font-size:13px}
+  @media(max-width:640px){.controls{flex-direction:column}}
+</style>
+</head>
+<body>
+<div class="wrap" role="main">
+  <h1>마피아42 카드 드로우 (Google Sites/Pages용)</h1>
+  <p class="lead">모드 선택 → 뽑기. 고급 카드팩/4·5·6티어 규칙을 반영해 표와 JSON으로 보여줍니다.</p>
+
+  <div class="controls">
+    <div class="card">
+      <label class="small">모드 선택</label>
+      <select id="modeSelect" aria-label="모드 선택">
+        <option value="advanced">고급 카드팩 (10장)</option>
+        <option value="4">4티어</option>
+        <option value="5">5티어</option>
+        <option value="6">6티어</option>
+      </select>
+      <div style="height:8px"></div>
+      <label class="small">개수 (4~6티어 선택 시)</label>
+      <input id="countInput" type="number" min="1" max="500" value="10" />
+      <div style="height:8px"></div>
+      <div style="display:flex;gap:8px">
+        <button id="drawBtn">뽑기</button>
+        <button id="clearBtn" class="secondary">초기화</button>
+        <button id="exportBtn" class="secondary" disabled>JSON 내보내기</button>
+      </div>
+      <div style="height:8px"></div>
+      <div class="small muted">고급 팩: 각 카드 89.1% 3티어, 9.9% 4티어, 1% 5티어. 10장 전부 3티어면 1장 4티어 승격.</div>
+    </div>
+
+    <div class="card" style="flex:1.2">
+      <div class="row" style="justify-content:space-between">
+        <div>
+          <div class="small muted">총 결과</div>
+          <div id="summaryCount" style="font-weight:700;font-size:18px">0장</div>
+        </div>
+        <div style="text-align:right">
+          <div class="small muted">고급 팩은 10장 고정</div>
+          <div id="tierInfo" class="small">-</div>
+        </div>
+      </div>
+      <div style="height:8px"></div>
+      <div id="resultPanel" class="results"></div>
+    </div>
+  </div>
+
+  <div id="logArea" style="margin-top:14px"></div>
+
+  <div class="footer">
+    <div>배포: 이 HTML을 GitHub Pages에 올린 뒤 Google Sites의 '삽입 → URL'로 임베드하면 됩니다.</div>
+  </div>
+</div>
+
+<script>
+/* ===== 데이터(직업 및 스킬) ===== */
+const CATEGORIES = ["마피아","마피아 팀 보조","경찰 계열","의사","시민 팀 특수","교주"];
+const CATEGORY_WEIGHTS = [3,1,1,1,5,1]; // 합 12
+
+const mafia_support = ["스파이","짐승인간","마담","도둑","마녀","과학자","사기꾼","청부업자"];
+const police_roles = ["경찰","자경단원","요원"];
+const citizen_special = ["군인","정치인","영매","연인","기자","건달","사립탐정","도굴꾼","테러리스트","성직자","예언자","판사","간호사","마술사","해커","심리학자","용병","공무원","파파라치","비밀결사","최면술사","점쟁이"];
+
+// 스킬 풀
+const COMMON_SKILLS = ["결백","도주","독심술","밀서","배심원","위증","유언","지박령","확성기"];
+const MAFIA_TEAM_SKILLS = ["지령","시한부","암구호"];
+const SUPPORT_ONLY = ["밀정"];
+const CITIZEN_TEAM_SKILLS = ["유품","정보원"];
+const UNIQUE = {
+  "마피아":["무법자","수배","수습","승부수","야습","위선","은폐","저격","퇴마"],
+  "스파이":["미인계","부검","자객"],
+  "짐승인간":["야만성","포효"],
+  "마담":["데뷔","현혹"],
+  "도둑":["후계자","조문"],
+  "마녀":["망각술"],
+  "과학자":["분석","왜곡"],
+  "사기꾼":["미인계"],
+  "청부업자":["직감"],
+  "경찰":["도청","기밀","부검","영장"],
+  "자경단원":["결사"],
+  "요원":["휴민트"],
+  "의사":["검진","박애","진정"],
+  "군인":["불굴","정신력"],
+  "정치인":["불문율","독재"],
+  "영매":["강령"],
+  "연인":["원한","헌신"],
+  "기자":["속보","부고"],
+  "건달":["연타","길동무"],
+  "사립탐정":["도청","함정"],
+  "도굴꾼":["계승","망령"],
+  "테러리스트":["유폭","섬광"],
+  "성직자":["축복","구마"],
+  "예언자":["선각자","사도"],
+  "판사":["불문율","관권"],
+  "간호사":["검시","선서"],
+  "마술사":["조수","투시"],
+  "해커":["도청","동기화"],
+  "심리학자":["프로파일링"],
+  "용병":["결사","추적"],
+  "공무원":["색출","감사","공조"],
+  "파파라치":["눈치"],
+  "비밀결사":["검시","표식"],
+  "최면술사":["암시"],
+  "점쟁이":["아르카나"],
+  "교주":["설파"]
+};
+
+/* ===== 유틸 함수 ===== */
+function weightedChoice(items, weights){
+  const total = weights.reduce((a,b)=>a+b,0);
+  let r = Math.random()*total;
+  for(let i=0;i<items.length;i++){
+    r -= weights[i];
+    if(r < 0) return items[i];
+  }
+  return items[items.length-1];
+}
+function chooseCategory(){ return weightedChoice(CATEGORIES, CATEGORY_WEIGHTS); }
+
+function drawRoleByCategory(cat){
+  switch(cat){
+    case "마피아": return "마피아";
+    case "마피아 팀 보조": return mafia_support[Math.floor(Math.random()*mafia_support.length)];
+    case "경찰 계열": return police_roles[Math.floor(Math.random()*police_roles.length)];
+    case "의사": return "의사";
+    case "시민 팀 특수": return citizen_special[Math.floor(Math.random()*citizen_special.length)];
+    case "교주": return "교주";
+    default: return "마피아";
+  }
+}
+
+function getTeam(role){
+  if(["마피아",...mafia_support].includes(role)) return "마피아 팀";
+  if([...police_roles,"의사",...citizen_special].includes(role)) return "시민 팀";
+  if(role==="교주") return "교주 팀";
+  return "미정";
+}
+
+function possibleSkills(role){
+  const team = getTeam(role);
+  const s = new Set(COMMON_SKILLS);
+  if(team === "마피아 팀" || team === "교주 팀"){
+    MAFIA_TEAM_SKILLS.forEach(x=>s.add(x));
+  }
+  if(team === "마피아 팀" && mafia_support.includes(role)) SUPPORT_ONLY.forEach(x=>s.add(x));
+  if(team === "시민 팀") CITIZEN_TEAM_SKILLS.forEach(x=>s.add(x));
+  (UNIQUE[role]||[]).forEach(x=>s.add(x));
+  return Array.from(s);
+}
+
+function drawSkills(role, tier){
+  const cnt = Math.max(0, tier - 3);
+  if(cnt === 0) return [];
+  const pool = possibleSkills(role).slice();
+  const out = [];
+  for(let i=0;i<cnt && pool.length>0;i++){
+    const idx = Math.floor(Math.random()*pool.length);
+    out.push(pool[idx]);
+    pool.splice(idx,1);
+  }
+  return out;
+}
+
+/* ===== 카드 뽑기 로직 ===== */
+function drawOneCard(tier){
+  const cat = chooseCategory();
+  const role = drawRoleByCategory(cat);
+  const skills = drawSkills(role, tier);
+  return { tier, role, skills, cat };
+}
+
+/* 고급 팩: 각 카드별 확률 89.1% 3티어, 9.9% 4티어, 1% 5티어, 10장. 모두 3티어면 하나 4티어로 승격 */
+function sampleAdvancedTier(){
+  const r = Math.random()*100;
+  if(r < 89.1) return 3;
+  if(r < 89.1 + 9.9) return 4;
+  return 5;
+}
+function drawAdvancedPack(){
+  const cards = [];
+  for(let i=0;i<10;i++){
+    const t = sampleAdvancedTier();
+    const cat = chooseCategory();
+    const role = drawRoleByCategory(cat);
+    const skills = drawSkills(role, t);
+    cards.push({tier:t, role, skills, cat});
+  }
+  const all3 = cards.every(c=>c.tier===3);
+  if(all3){
+    const i = Math.floor(Math.random()*cards.length);
+    const r = cards[i];
+    cards[i] = { tier:4, role:r.role, skills: drawSkills(r.role,4), cat:r.cat };
+  }
+  return cards;
+}
+
+/* ===== UI 핸들링 ===== */
+const modeSelect = document.getElementById('modeSelect');
+const countInput = document.getElementById('countInput');
+const drawBtn = document.getElementById('drawBtn');
+const clearBtn = document.getElementById('clearBtn');
+const exportBtn = document.getElementById('exportBtn');
+const resultPanel = document.getElementById('resultPanel');
+const summaryCount = document.getElementById('summaryCount');
+const tierInfo = document.getElementById('tierInfo');
+
+let lastResults = [];
+
+function renderResults(arr){
+  lastResults = arr.slice();
+  summaryCount.textContent = arr.length + '장';
+  tierInfo.textContent = (modeSelect.value === 'advanced') ? '고급팩(10장)' : `${modeSelect.value}티어 ${countInput.value}장`;
+  exportBtn.disabled = arr.length===0;
+
+  if(arr.length === 0){
+    resultPanel.innerHTML = '<div class="small muted">아직 결과가 없습니다. 뽑기를 누르세요.</div>';
+    return;
+  }
+
+  // table build
+  let html = '<table><thead><tr><th>#</th><th>티어</th><th>직업(카테고리)</th><th>스킬</th></tr></thead><tbody>';
+  arr.forEach((c,i)=>{
+    html += `<tr><td>${i+1}</td><td>${c.tier}티어</td><td>${c.role} <span class="small muted">(${c.cat})</span></td><td>${c.skills.length?c.skills.join(', '):'<span class="muted">없음</span>'}</td></tr>`;
+  });
+  html += '</tbody></table>';
+  html += '<div style="height:10px"></div>';
+  html += '<div class="small muted">JSON 결과:</div>';
+  html += `<pre>${escapeHtml(JSON.stringify(arr, null, 2))}</pre>`;
+  resultPanel.innerHTML = html;
+}
+
+function escapeHtml(s){ return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+modeSelect.addEventListener('change',()=>{
+  const v = modeSelect.value;
+  if(v === 'advanced'){ countInput.disabled = true; countInput.value = 10; }
+  else { countInput.disabled = false; if(!countInput.value) countInput.value = 10; }
+  renderResults([]);
+});
+
+drawBtn.addEventListener('click',()=>{
+  const mode = modeSelect.value;
+  if(mode === 'advanced'){
+    const res = drawAdvancedPack();
+    renderResults(res);
+  } else {
+    const tier = parseInt(mode,10);
+    let n = parseInt(countInput.value,10);
+    if(isNaN(n) || n < 1) n = 1;
+    if(n > 500) n = 500;
+    const arr = [];
+    for(let i=0;i<n;i++){
+      arr.push(drawOneCard(tier));
+    }
+    renderResults(arr);
+  }
+});
+
+clearBtn.addEventListener('click', ()=>{ renderResults([]); });
+
+exportBtn.addEventListener('click', ()=>{
+  const blob = new Blob([JSON.stringify(lastResults,null,2)], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'mafia42_draw.json'; a.click(); URL.revokeObjectURL(url);
+});
+
+/* 초기화 */
+modeSelect.dispatchEvent(new Event('change'));
+renderResults([]);
+</script>
+</body>
+</html>
