@@ -3,100 +3,432 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>마피아42 카드 뽑기</title>
+<title>마피아42 카드뽑기 & 주도 계산기</title>
 <style>
-body{background:#0f172a;color:#e6eef8;font-family:Inter,Roboto,Apple SD Gothic Neo,맑은고딕,sans-serif;margin:0;padding:30px}
-.wrap{max-width:680px;margin:auto;text-align:center}
-select,input,button{padding:8px 10px;border:none;border-radius:8px;font-size:15px}
-select,input{background:#1e293b;color:#e6eef8}
-button{background:#7c3aed;color:white;cursor:pointer}
-table{width:100%;border-collapse:collapse;margin-top:20px}
-th,td{padding:8px;border-bottom:1px solid rgba(255,255,255,0.1);text-align:left}
-.muted{color:#94a3b8;font-size:13px}
+:root{--bg:#0f172a;--panel:#0b1220;--accent:#7c3aed;--muted:#94a3b8}
+*{box-sizing:border-box}
+body{margin:0;background:#0f172a;color:#e6eef8;font-family:Inter,Roboto,Apple SD Gothic Neo,맑은고딕,sans-serif}
+.wrap{max-width:980px;margin:auto;padding:20px}
+.tabs{display:flex;gap:8px;margin-bottom:14px}
+.tab{padding:8px 12px;border-radius:12px;border:1px solid rgba(255,255,255,.1);background:#121a2c;cursor:pointer}
+.tab.active{background:var(--accent)}
+.section{display:none}
+.section.active{display:block}
+.card{background:var(--panel);padding:14px;border-radius:12px;margin-bottom:14px}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+input,select,button{padding:8px 10px;border-radius:10px;border:1px solid rgba(255,255,255,.08);background:#1e293b;color:#e6eef8}
+button{background:var(--accent);border:none;cursor:pointer}
+button.ghost{background:transparent}
+.small{color:var(--muted);font-size:12px}
+table{width:100%;border-collapse:collapse}
+th,td{padding:8px;border-bottom:1px solid rgba(255,255,255,.08);text-align:left}
+.kbd{background:#111827;border:1px solid #374151;border-radius:6px;padding:2px 6px;font-size:12px;color:#cbd5e1}
+hr{border:none;border-top:1px solid rgba(255,255,255,.08);margin:12px 0}
+.badge{background:#334155;color:#e2e8f0;border-radius:999px;padding:2px 8px;font-size:12px}
 </style>
 </head>
 <body>
 <div class="wrap">
-  <h2>마피아42 카드 뽑기</h2>
-  <div>
-    <select id="mode">
-      <option value="advanced">고급 카드팩 (10장)</option>
-      <option value="4">4티어</option>
-      <option value="5">5티어</option>
-      <option value="6">6티어</option>
-    </select>
-    <input id="count" type="number" min="1" max="500" value="10">
-    <button id="draw">뽑기</button>
+  <div class="tabs">
+    <div class="tab active" data-tab="draw">카드뽑기</div>
+    <div class="tab" data-tab="judo">주도 계산기</div>
   </div>
-  <div id="result"></div>
+
+  <!-- ===== 카드뽑기 ===== -->
+  <section id="draw" class="section active">
+    <div class="card">
+      <h2>마피아42 카드 뽑기</h2>
+      <div class="row">
+        <select id="mode">
+          <option value="advanced">고급 카드팩 (10장)</option>
+          <option value="4">4티어</option>
+          <option value="5">5티어</option>
+          <option value="6">6티어</option>
+        </select>
+        <input id="count" type="number" min="1" max="500" value="10">
+        <button id="drawBtn">뽑기</button>
+      </div>
+      <div class="small" style="margin-top:6px">고급팩: 카드별 89.1% 3티어, 9.9% 4티어, 1% 5티어. 전부 3티어면 무작위 1장 4티어 승격.</div>
+      <div id="drawResult" style="margin-top:10px"></div>
+    </div>
+  </section>
+
+  <!-- ===== 주도 계산기 ===== -->
+  <section id="judo" class="section">
+    <div class="card">
+      <h2>주도(주사위엽서) 기대값 계산기</h2>
+
+      <!-- 입력 파라미터 -->
+      <div class="row">
+        <span class="badge">환율</span>
+        <input id="rate" type="number" min="0" step="0.01" value="1200" style="width:120px">
+        <span class="small">※ 100만 루블 → 몇 루나</span>
+
+        <span class="badge">길드 레벨</span>
+        <select id="guild">
+          <option value="wood">우드 (+1%)</option>
+          <option value="bronze">브론즈 (+2%)</option>
+          <option value="silver">실버 (+3%)</option>
+          <option value="gold">골드 (+4%)</option>
+          <option value="platinum">플래티넘 (+5%)</option>
+          <option value="master">마스터 (+6%)</option>
+        </select>
+
+        <span class="badge">동상 레벨</span>
+        <select id="statue">
+          <option value="0">0 (0%)</option>
+          <option value="1">1 (+2.5%)</option>
+          <option value="2">2 (+5%)</option>
+          <option value="3">3 (+7.5%)</option>
+          <option value="4">4 (+10%)</option>
+          <option value="5">5 (+12.5%)</option>
+          <option value="6">6 (+15%)</option>
+        </select>
+      </div>
+
+      <hr>
+
+      <!-- 조건들 -->
+      <div class="row">
+        <h3 style="margin:0">조건</h3>
+        <button class="ghost" id="addCond">+ 조건 추가</button>
+      </div>
+      <div id="condList"></div>
+      <div class="small" style="margin-top:6px">
+        유형 <span class="kbd">단순</span>: (명성/일수) (연산자) (값) 例: <b>명성 &gt; 9</b>, <b>일수 &lt; 21</b><br>
+        유형 <span class="kbd">자리수식</span>: <b>명</b>(명성 십의 자리) + <b>성</b>(명성 일의 자리) + <b>일</b>(일수 십의 자리) + <b>수</b>(일수 일의 자리) 例: <b>명 + 성 + 일 + 수 ≥ 10</b>
+      </div>
+
+      <hr>
+
+      <!-- 보상들 -->
+      <div class="row">
+        <h3 style="margin:0">보상</h3>
+        <button class="ghost" id="addReward">+ 보상 추가</button>
+      </div>
+      <div id="rewardList"></div>
+      <div class="small" style="margin-top:6px">
+        Ruble 가치(기본): 깜짝 21000, 주사위 23609.28625, 고급 6000, 일반 3000, 4주년 32000, 산타 8000, +3 9000, 추천장 10000, 고귀한 15000, 기타 = (명성×일수×100)<br>
+        최종 Ruble은 <b>길드 보너스</b>(1~6%)와 <b>동상 보너스</b>(0~15%)를 모두 합산해 적용합니다.
+      </div>
+
+      <hr>
+
+      <div class="row">
+        <button id="calcEV">기대 루나 계산</button>
+        <button class="ghost" id="fillExample">예시 채우기(명성&gt;9 &amp; 일수&lt;21, 보상=주사위×5)</button>
+      </div>
+
+      <div id="evOut" style="margin-top:10px"></div>
+    </div>
+  </section>
 </div>
 
 <script>
+/* ===== 탭 ===== */
+document.querySelectorAll('.tab').forEach(t=>{
+  t.onclick=()=>{
+    document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
+    document.querySelectorAll('.section').forEach(x=>x.classList.remove('active'));
+    t.classList.add('active');
+    document.getElementById(t.dataset.tab).classList.add('active');
+  };
+});
+
+/* ===== 카드뽑기 ===== */
 const CATEGORIES=["마피아","마피아 팀 보조","경찰 계열","의사","시민 팀 특수","교주"];
 const WEIGHTS=[3,1,1,1,5,1];
 const mafia_support=["스파이","짐승인간","마담","도둑","마녀","과학자","사기꾼","청부업자"];
 const police=["경찰","자경단원","요원"];
 const citizen_special=["군인","정치인","영매","연인","기자","건달","사립탐정","도굴꾼","테러리스트","성직자","예언자","판사","간호사","마술사","해커","심리학자","용병","공무원","파파라치","비밀결사","최면술사","점쟁이"];
 
-const COMMON_SKILLS=["결백","도주","독심술","밀서","배심원","위증","유언","지박령","확성기"];
-const MAFIA_TEAM_SKILLS=["지령","시한부","암구호"];
-const SUPPORT_ONLY=["밀정"];
-const CITIZEN_TEAM_SKILLS=["유품","정보원"];
-const UNIQUE={
-"마피아":["무법자","수배","수습","승부수","야습","위선","은폐","저격","퇴마"],
-"스파이":["미인계","부검","자객"],"짐승인간":["야만성","포효"],"마담":["데뷔","현혹"],
-"도둑":["후계자","조문"],"마녀":["망각술"],"과학자":["분석","왜곡"],"사기꾼":["미인계"],
-"청부업자":["직감"],"경찰":["도청","기밀","부검","영장"],"자경단원":["결사"],"요원":["휴민트"],
-"의사":["검진","박애","진정"],"군인":["불굴","정신력"],"정치인":["불문율","독재"],"영매":["강령"],
-"연인":["원한","헌신"],"기자":["속보","부고"],"건달":["연타","길동무"],"사립탐정":["도청","함정"],
-"도굴꾼":["계승","망령"],"테러리스트":["유폭","섬광"],"성직자":["축복","구마"],"예언자":["선각자","사도"],
-"판사":["불문율","관권"],"간호사":["검시","선서"],"마술사":["조수","투시"],"해커":["도청","동기화"],
-"심리학자":["프로파일링"],"용병":["결사","추적"],"공무원":["색출","감사","공조"],"파파라치":["눈치"],
-"비밀결사":["검시","표식"],"최면술사":["암시"],"점쟁이":["아르카나"],"교주":["설파"]
+function weightedChoice(items,w){let t=w.reduce((a,b)=>a+b,0),r=Math.random()*t;for(let i=0;i<items.length;i++){r-=w[i];if(r<0)return items[i]}return items[items.length-1]}
+function pickRole(cat){if(cat==="마피아")return"마피아";if(cat==="마피아 팀 보조")return mafia_support[Math.random()*mafia_support.length|0];if(cat==="경찰 계열")return police[Math.random()*police.length|0];if(cat==="의사")return"의사";if(cat==="시민 팀 특수")return citizen_special[Math.random()*citizen_special.length|0];return"교주";}
+function pickTierAdv(){const r=Math.random()*100; if(r<89.1)return 3; if(r<99)return 4; return 5;}
+function drawAdv(){const arr=[];for(let i=0;i<10;i++){const t=pickTierAdv();arr.push({tier:t,role:pickRole(weightedChoice(CATEGORIES,WEIGHTS))});} if(arr.every(c=>c.tier===3)){arr[Math.random()*arr.length|0].tier=4;} return arr;}
+function drawFixed(tier,n){const arr=[];for(let i=0;i<n;i++){arr.push({tier,role:pickRole(weightedChoice(CATEGORIES,WEIGHTS))});} return arr;}
+document.getElementById('drawBtn').onclick=()=>{
+  const mode=document.getElementById('mode').value;
+  const n=parseInt(document.getElementById('count').value)||10;
+  const cards = (mode==="advanced")? drawAdv() : drawFixed(parseInt(mode),n);
+  let html='<table><thead><tr><th>#</th><th>티어</th><th>직업</th></tr></thead><tbody>';
+  cards.forEach((c,i)=>{html+=`<tr><td>${i+1}</td><td>${c.tier}</td><td>${c.role}</td></tr>`});
+  html+='</tbody></table>';
+  document.getElementById('drawResult').innerHTML=html;
 };
 
-function weightedChoice(items,weights){
-  let t=weights.reduce((a,b)=>a+b,0),r=Math.random()*t;
-  for(let i=0;i<items.length;i++){r-=weights[i];if(r<0)return items[i];}
-  return items[items.length-1];
-}
-function pickRole(cat){
-  if(cat==="마피아")return "마피아";
-  if(cat==="마피아 팀 보조")return mafia_support[Math.random()*mafia_support.length|0];
-  if(cat==="경찰 계열")return police[Math.random()*police.length|0];
-  if(cat==="의사")return "의사";
-  if(cat==="시민 팀 특수")return citizen_special[Math.random()*citizen_special.length|0];
-  return "교주";
-}
-function team(role){
-  if(["마피아",...mafia_support].includes(role))return "마피아 팀";
-  if([...police,"의사",...citizen_special].includes(role))return "시민 팀";
-  if(role==="교주")return "교주 팀";
-  return "미정";
-}
-function skillsFor(role,tier){
-  const cnt=Math.max(0,tier-3);
-  const s=new Set(COMMON_SKILLS);
-  const tm=team(role);
-  if(tm==="마피아 팀"||tm==="교주 팀")MAFIA_TEAM_SKILLS.forEach(x=>s.add(x));
-  if(tm==="마피아 팀"&&mafia_support.includes(role))SUPPORT_ONLY.forEach(x=>s.add(x));
-  if(tm==="시민 팀")CITIZEN_TEAM_SKILLS.forEach(x=>s.add(x));
-  (UNIQUE[role]||[]).forEach(x=>s.add(x));
-  const arr=[...s];
-  const out=[];
-  for(let i=0;i<cnt&&arr.length>0;i++){
-    const idx=Math.random()*arr.length|0;
-    out.push(arr[idx]);
-    arr.splice(idx,1);
+/* ===== 주도 계산기 ===== */
+
+/* 명성(1~51) 분포(%) */
+const repPct = {
+  1:8.2222,2:8.3333,3:8.3333,4:8.3333,5:8.3333,6:8.3333,7:8.3333,8:8.3333,9:1.4444,
+  10:1.1111,11:1.1111,12:1.2222,13:1.0,14:1.1111,15:1.1111,16:1.0,17:1.1111,18:1.0,
+  19:1.0,20:1.0,21:1.0,22:1.0,23:0.8889,24:1.0,25:0.8889,26:0.8889,27:0.8889,28:0.7778,
+  29:0.8889,30:0.7778,31:0.7778,32:0.7778,33:0.7778,34:0.7778,35:0.6667,36:0.6667,
+  37:0.6667,38:0.6667,39:0.6667,40:0.5556,41:0.5556,42:0.5556,43:0.5556,44:0.4444,
+  45:0.4444,46:0.4444,47:0.3333,48:0.3333,49:0.2222,50:0.2222,51:0.1111
+};
+const repProb={}; let repSum=0;
+for(let r=1;r<=51;r++){repProb[r]=(repPct[r]||0)/100; repSum+=repProb[r];}
+const dayProb = 1/40; // 2.5%
+
+/* 길드/동상 보너스 */
+const guildBonus = { wood:0.01, bronze:0.02, silver:0.03, gold:0.04, platinum:0.05, master:0.06 };
+const statueBonus = { 0:0, 1:0.025, 2:0.05, 3:0.075, 4:0.10, 5:0.125, 6:0.15 };
+
+/* 보상 Ruble 테이블 */
+const RUB = {
+  "깜짝 엽서":21000,
+  "주사위 엽서":23609.28625,
+  "고급 엽서":6000,
+  "일반 엽서":3000,
+  "4주년 기념 엽서":32000,
+  "산타 엽서":8000,
+  "+3 엽서":9000,
+  "추천장":10000,
+  "고귀한 엽서":15000,
+  "기타 엽서":null // 명성×일수×100
+};
+
+/* 동적 UI — 조건 */
+const condList = document.getElementById('condList');
+document.getElementById('addCond').onclick = () => addCondition();
+
+function addCondition(pref){
+  const id = 'cond_'+Math.random().toString(36).slice(2,8);
+  const row = document.createElement('div');
+  row.className='card';
+  row.innerHTML = `
+    <div class="row">
+      <select class="condType">
+        <option value="simple">단순(명성/일수)</option>
+        <option value="digit">자리수식(명·성·일·수)</option>
+      </select>
+
+      <span class="simpleArea">
+        <select class="varSel">
+          <option value="rep">명성</option>
+          <option value="day">일수</option>
+        </select>
+        <select class="opSel">
+          <option>&gt;</option><option>&gt;=</option>
+          <option>&lt;</option><option>&lt;=</option><option>==</option>
+        </select>
+        <input class="valInp" type="number" step="1" placeholder="값">
+      </span>
+
+      <span class="digitArea" style="display:none">
+        <input class="exprInp" style="width:220px" placeholder="예: 명 + 성 + 일 + 수">
+        <select class="op2">
+          <option>&gt;</option><option>&gt;=</option>
+          <option>&lt;</option><option>&lt;=</option><option>==</option>
+        </select>
+        <input class="rhs" type="number" step="1" placeholder="값">
+      </span>
+
+      <button class="ghost delBtn">삭제</button>
+    </div>
+  `;
+  condList.appendChild(row);
+
+  const typeSel=row.querySelector('.condType');
+  const simple=row.querySelector('.simpleArea');
+  const digit=row.querySelector('.digitArea');
+  typeSel.onchange=()=>{ if(typeSel.value==='simple'){simple.style.display='';digit.style.display='none';} else {simple.style.display='none';digit.style.display='';} };
+  row.querySelector('.delBtn').onclick=()=>row.remove();
+
+  // preset
+  if(pref){
+    typeSel.value = pref.type||'simple'; typeSel.onchange();
+    if(pref.type==='simple'){ row.querySelector('.varSel').value=pref.var; row.querySelector('.opSel').value=pref.op; row.querySelector('.valInp').value=pref.val; }
+    if(pref.type==='digit'){ row.querySelector('.exprInp').value=pref.expr; row.querySelector('.op2').value=pref.op; row.querySelector('.rhs').value=pref.val; }
   }
-  return out;
 }
-function pickTier(){
-  const r=Math.random()*100;
-  if(r<89.1)return 3;
-  if(r<99)return 4;
-  return 5;
+
+/* 동적 UI — 보상 */
+const rewardList = document.getElementById('rewardList');
+document.getElementById('addReward').onclick = () => addReward();
+
+function addReward(pref){
+  const row = document.createElement('div');
+  row.className='card';
+  row.innerHTML = `
+    <div class="row">
+      <select class="rewardSel">
+        ${Object.keys(RUB).map(k=>`<option>${k}</option>`).join('')}
+      </select>
+      <span>수량</span>
+      <input class="qty" type="number" min="0" value="1" style="width:90px">
+      <span class="otherInputs" style="display:none">
+        <span class="small">기타: 명성×일수×100</span>
+        <input class="otherRep" type="number" min="1" max="51" placeholder="명성" style="width:90px">
+        <input class="otherDay" type="number" min="1" max="40" placeholder="일수" style="width:90px">
+      </span>
+      <span class="small baseShow"></span>
+      <button class="ghost delBtn">삭제</button>
+    </div>
+  `;
+  rewardList.appendChild(row);
+
+  const sel=row.querySelector('.rewardSel');
+  const other=row.querySelector('.otherInputs');
+  const baseShow=row.querySelector('.baseShow');
+  function refresh(){
+    if(sel.value==='기타 엽서'){ other.style.display=''; baseShow.textContent='';}
+    else { other.style.display='none'; baseShow.textContent = `기본 Ruble ${RUB[sel.value]}`; }
+  }
+  sel.onchange=refresh; refresh();
+  row.querySelector('.delBtn').onclick=()=>row.remove();
+
+  if(pref){
+    sel.value=pref.name; refresh();
+    row.querySelector('.qty').value=pref.qty;
+    if(pref.name==='기타 엽서'){ row.querySelector('.otherRep').value=pref.rep; row.querySelector('.otherDay').value=pref.day; }
+  }
 }
+
+/* 조건 평가 */
+function tens(n){return Math.floor(n/10)}
+function ones(n){return n%10}
+function evalDigitExpr(expr, rep, day){
+  const map = { '명':tens(rep), '성':ones(rep), '일':tens(day), '수':ones(day) };
+  // 허용: 변수와 +, 공백만
+  const tokens = expr.replace(/\s+/g,'').split('+').filter(Boolean);
+  let sum=0;
+  for(const t of tokens){
+    if(!(t in map)) return null; // invalid
+    sum += map[t];
+  }
+  return sum;
+}
+function cmp(a,op,b){
+  if(op==='>') return a>b;
+  if(op==='>=') return a>=b;
+  if(op==='<') return a<b;
+  if(op==='<=') return a<=b;
+  if(op==='==') return a==b;
+  return false;
+}
+function parseConditions(){
+  const conds=[];
+  condList.querySelectorAll('.card').forEach(row=>{
+    const type = row.querySelector('.condType').value;
+    if(type==='simple'){
+      const v = row.querySelector('.varSel').value; // rep/day
+      const op = row.querySelector('.opSel').value;
+      const val = Number(row.querySelector('.valInp').value);
+      if(!Number.isFinite(val)) return;
+      conds.push({type, v, op, val});
+    }else{
+      const expr = row.querySelector('.exprInp').value.trim();
+      const op = row.querySelector('.op2').value;
+      const val = Number(row.querySelector('.rhs').value);
+      if(!expr || !Number.isFinite(val)) return;
+      conds.push({type, expr, op, val});
+    }
+  });
+  return conds;
+}
+
+/* 보상 합계 Ruble */
+function parseRewards(){
+  const items=[];
+  rewardList.querySelectorAll('.card').forEach(row=>{
+    const name=row.querySelector('.rewardSel').value;
+    const qty=Number(row.querySelector('.qty').value)||0;
+    if(qty<=0) return;
+    if(name==='기타 엽서'){
+      const rep=Number(row.querySelector('.otherRep').value||0);
+      const day=Number(row.querySelector('.otherDay').value||0);
+      const base = rep*day*100;
+      items.push({name, qty, base});
+    }else{
+      items.push({name, qty, base:RUB[name]});
+    }
+  });
+  return items;
+}
+
+/* 성공확률 */
+function successProb(conds){
+  let p=0;
+  for(let r=1;r<=51;r++){
+    for(let d=1; d<=40; d++){
+      let ok=true;
+      for(const c of conds){
+        if(c.type==='simple'){
+          const x = (c.v==='rep')? r : d;
+          if(!cmp(x, c.op, c.val)){ ok=false; break; }
+        }else{
+          const val = evalDigitExpr(c.expr, r, d);
+          if(val===null || !cmp(val, c.op, c.val)){ ok=false; break; }
+        }
+      }
+      if(ok){ p += repProb[r] * dayProb; }
+    }
+  }
+  return p; // 0..1
+}
+
+/* 길드/동상 보너스 적용 */
+function applyBonuses(baseSum){
+  const g = guildBonus[document.getElementById('guild').value];
+  const s = statueBonus[document.getElementById('statue').value];
+  const mult = 1 + g + s;
+  return baseSum * mult;
+}
+
+/* 루블→루나 환산 */
+function rubToLuna(rub){
+  const rate = Number(document.getElementById('rate').value||0); // per 1,000,000 rub
+  return rub * rate / 1_000_000;
+}
+
+function fmt(n, d=4){ return Number(n).toLocaleString(undefined,{maximumFractionDigits:d}); }
+
+/* 버튼: 예시 */
+document.getElementById('fillExample').onclick=()=>{
+  condList.innerHTML=''; rewardList.innerHTML='';
+  addCondition({type:'simple', var:'rep', op:'>', val:9});
+  addCondition({type:'simple', var:'day', op:'<', val:21});
+  addReward({name:'주사위 엽서', qty:5});
+  document.getElementById('rate').value=1200;
+  document.getElementById('guild').value='wood';
+  document.getElementById('statue').value='0';
+};
+
+/* 버튼: 계산 */
+document.getElementById('calcEV').onclick=()=>{
+  const conds = parseConditions();
+  const rewards = parseRewards();
+
+  const P = successProb(conds);                 // 성공확률
+  const baseRub = rewards.reduce((s,it)=> s + it.base*it.qty, 0); // 보상 기본 루블
+  const finalRub = applyBonuses(baseRub);       // 보너스 적용
+  const EV_rub  = P * finalRub;                 // 기대 루블
+  const EV_luna = rubToLuna(EV_rub);            // 기대 루나
+
+  const out = `
+    <table>
+      <tbody>
+        <tr><th style="width:200px">성공확률</th><td><b>${fmt(P*100,4)} %</b></td></tr>
+        <tr><th>보상 루블(기본 합)</th><td>${fmt(baseRub,2)} rub</td></tr>
+        <tr><th>길드/동상 보너스 적용</th><td>${fmt(finalRub,2)} rub</td></tr>
+        <tr><th>기대 루블(EV)</th><td>${fmt(EV_rub,2)} rub</td></tr>
+        <tr><th>기대 루나(EV)</th><td><b>${fmt(EV_luna,4)} 루나</b></td></tr>
+        <tr><th>명성 분포 합(검증)</th><td>${fmt(repSum*100,6)} %</td></tr>
+      </tbody>
+    </table>
+  `;
+  document.getElementById('evOut').innerHTML = out;
+};
+
+/* 최초 화면: 기본 행 한 개씩 */
+addCondition({type:'simple', var:'rep', op:'>', val:9});
+addReward({name:'주사위 엽서', qty:5});
+</script>
+</body>
+</html>}
 function drawAdvanced(){
   let cards=[];
   for(let i=0;i<10;i++){
