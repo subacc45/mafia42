@@ -251,14 +251,43 @@ function addReward(pref){
   if(pref){ sel.value=pref.name; refresh(); row.querySelector('.qty').value=pref.qty; if(pref.name==='기타 엽서'){ row.querySelector('.otherRep').value=pref.rep; row.querySelector('.otherDay').value=pref.day; } }
 }
 
+<script>
 function tens(n){return Math.floor(n/10);}
 function ones(n){return n%10;}
-function evalDigitExpr(expr,rep,day){
-  var map={'명':tens(rep),'성':ones(rep),'일':tens(day),'수':ones(day)};
-  var tokens=expr.replace(/\s+/g,'').split('+'); var sum=0;
-  for(var i=0;i<tokens.length;i++){var t=tokens[i]; if(!t)continue; if(!(t in map))return null; sum+=map[t];}
+
+// 입력 식 표준화: 공백/전각플러스/기호 치환, '명성','일수'도 허용
+function normalizeExpr(expr){
+  return String(expr || "")
+    // 다양한 공백을 모두 제거
+    .replace(/[\u00A0\u1680\u2000-\u200B\u202F\u205F\u3000\s]+/g, "")
+    // 전각/변형 플러스 기호를 표준 + 로
+    .replace(/[＋﹢➕]/g, "+")
+    // 한글 조합어를 분해 지원: '명성' -> '명+성', '일수' -> '일+수'
+    .replace(/명성/g, "명+성")
+    .replace(/일수/g, "일+수")
+    // 연속 ++ 는 한 개로
+    .replace(/\++/g, "+")
+    // 앞뒤 + 제거
+    .replace(/^\+|\+$/g, "");
+}
+
+// 자리수식 평가: 허용 토큰 = 명/성/일/수, 연산자 = + 만 지원
+function evalDigitExpr(expr, rep, day){
+  var e = normalizeExpr(expr);
+  if(!e) return null;
+  var map = { "명":tens(rep), "성":ones(rep), "일":tens(day), "수":ones(day) };
+  var parts = e.split("+");
+  var sum = 0;
+  for(var i=0;i<parts.length;i++){
+    var t = parts[i];
+    if(!map.hasOwnProperty(t)) return null; // 알 수 없는 토큰
+    sum += map[t];
+  }
   return sum;
 }
+
+// 비교 연산자는 기존 cmp(a, op, b) 그대로 사용
+</script>
 function cmp(a,op,b){if(op==='>')return a>b; if(op===">=")return a>=b; if(op==='<')return a<b; if(op==='<=')return a<=b; if(op==='==')return a==b; return false;}
 function parseConditions(){
   var conds=[]; var rows=condList.querySelectorAll('.card');
