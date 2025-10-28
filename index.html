@@ -403,6 +403,7 @@ document.getElementById('calcEV').onclick=function(){
   var EV_rub=P*finalRub;
   var EV_luna=rubToLuna(EV_rub);
   var baseExchange = 23609.28625;
+  baseExchange += lunaToRub(baseExchange / 100 / 42);
   var percentGain = (EV_rub / baseExchange) * 100;
   var html='<table><tbody>'
     +'<tr><th style="width:200px">성공확률</th><td><b>'+fmt(P*100,4)+' %</b></td></tr>'
