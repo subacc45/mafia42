@@ -380,6 +380,11 @@ function applyBonuses(baseSum){
   return baseSum*(1+g+s);
 }
 function rubToLuna(rub){ var rate=Number(document.getElementById('rate').value||0); return rub*rate/1000000; }
+function lunaToRub(luna){
+  var rate = Number(document.getElementById('rate').value||0);
+  if(rate<=0) return 0;
+  return luna * 1000000 / rate;
+}
 function fmt(n,d){ return Number(n).toLocaleString(undefined,{maximumFractionDigits:(d||4)}); }
 
 document.getElementById('fillExample').onclick=function(){
@@ -394,6 +399,7 @@ document.getElementById('calcEV').onclick=function(){
   var P=successProb(conds);
   var baseRub=0; for(var i=0;i<rewards.length;i++){baseRub+=rewards[i].base*rewards[i].qty;}
   var finalRub=applyBonuses(baseRub);
+  var finalRub += LunaToRub(baseRub / 100 / 42)
   var EV_rub=P*finalRub;
   var EV_luna=rubToLuna(EV_rub);
   var baseExchange = 23609.28625;
