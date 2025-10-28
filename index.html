@@ -396,12 +396,15 @@ document.getElementById('calcEV').onclick=function(){
   var finalRub=applyBonuses(baseRub);
   var EV_rub=P*finalRub;
   var EV_luna=rubToLuna(EV_rub);
+  var baseExchange = 23609.28625;
+  var percentGain = (EV_rub / baseExchange) * 100;
   var html='<table><tbody>'
     +'<tr><th style="width:200px">성공확률</th><td><b>'+fmt(P*100,4)+' %</b></td></tr>'
     +'<tr><th>보상 루블(기본 합)</th><td>'+fmt(baseRub,2)+' 루블</td></tr>'
     +'<tr><th>보너스 적용</th><td>'+fmt(finalRub,2)+' 루블</td></tr>'
     +'<tr><th>기대 루블(EV)</th><td>'+fmt(EV_rub,2)+' 루블</td></tr>'
     +'<tr><th>기대 루나(EV)</th><td><b>'+fmt(EV_luna,4)+' 루나</b></td></tr>'
+    + '<tr><th>주교 대비 이익</th><td><b>' + fmt(percentGain,2) + ' %</b></td></tr>'
     +'</tbody></table>';
   document.getElementById('evOut').innerHTML=html;
 };
