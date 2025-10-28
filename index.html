@@ -397,8 +397,9 @@ document.getElementById('calcEV').onclick=function(){
   var conds=parseConditions(); var rewards=parseRewards();
   var P=successProb(conds);
   var baseRub=0; for(var i=0;i<rewards.length;i++){baseRub+=rewards[i].base*rewards[i].qty;}
-  var finalRub += LunaToRub(baseRub / 100 / 42);
   var finalRub=applyBonuses(baseRub);
+  finalRub += LunaToRub(baseRub / 100 / 42);
+
   var EV_rub=P*finalRub;
   var EV_luna=rubToLuna(EV_rub);
   var baseExchange = 23609.28625;
