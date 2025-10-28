@@ -381,7 +381,11 @@ function applyBonuses(baseSum){
 }
 function rubToLuna(rub){ var rate=Number(document.getElementById('rate').value||0); return rub*rate/1000000; }
 function fmt(n,d){ return Number(n).toLocaleString(undefined,{maximumFractionDigits:(d||4)}); }
-
+function lunaToRub(luna){
+  var rate = Number(document.getElementById('rate').value||0);
+  if(rate<=0) return 0;
+  return luna * 1000000 / rate;
+}
 document.getElementById('fillExample').onclick=function(){
   condList.innerHTML=''; rewardList.innerHTML='';
   addCondition({type:'simple',var:'rep',op:'>',val:9});
