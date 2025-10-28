@@ -398,7 +398,7 @@ document.getElementById('calcEV').onclick=function(){
   var P=successProb(conds);
   var baseRub=0; for(var i=0;i<rewards.length;i++){baseRub+=rewards[i].base*rewards[i].qty;}
   var finalRub=applyBonuses(baseRub);
-  finalRub += LunaToRub(baseRub / 100 / 42);
+  finalRub += lunaToRub(baseRub / 100 / 42);
 
   var EV_rub=P*finalRub;
   var EV_luna=rubToLuna(EV_rub);
