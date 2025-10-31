@@ -3,20 +3,20 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>마피아42 카드뽑기 & 주도 계산기</title>
+<title>마피아42 카드뽑기 · 주도 계산기 · 상자깡 시뮬레이터</title>
 <style>
 :root{--bg:#0f172a;--panel:#0b1220;--accent:#7c3aed;--muted:#94a3b8}
 *{box-sizing:border-box}
 body{margin:0;background:#0f172a;color:#e6eef8;font-family:Inter,Roboto,Apple SD Gothic Neo,맑은고딕,sans-serif}
-.wrap{max-width:980px;margin:auto;padding:20px}
-.tabs{display:flex;gap:8px;margin-bottom:14px}
+.wrap{max-width:1080px;margin:auto;padding:20px}
+.tabs{display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap}
 .tab{padding:8px 12px;border-radius:12px;border:1px solid rgba(255,255,255,.1);background:#121a2c;cursor:pointer}
 .tab.active{background:var(--accent)}
 .section{display:none}
 .section.active{display:block}
 .card{background:var(--panel);padding:14px;border-radius:12px;margin-bottom:14px}
 .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
-input,select,button{padding:8px 10px;border-radius:10px;border:1px solid rgba(255,255,255,.08);background:#1e293b;color:#e6eef8}
+input,select,button,textarea{padding:8px 10px;border-radius:10px;border:1px solid rgba(255,255,255,.08);background:#1e293b;color:#e6eef8}
 button{background:var(--accent);border:none;cursor:pointer}
 button.ghost{background:transparent}
 .small{color:var(--muted);font-size:12px}
@@ -25,6 +25,11 @@ th,td{padding:8px;border-bottom:1px solid rgba(255,255,255,.08);text-align:left}
 .badge{background:#334155;color:#e2e8f0;border-radius:999px;padding:2px 8px;font-size:12px}
 hr{border:none;border-top:1px solid rgba(255,255,255,.08);margin:12px 0}
 .muted{color:#94a3b8}
+.scroll{max-height:260px;overflow:auto;border:1px solid rgba(255,255,255,.08);border-radius:10px;padding:8px;background:#0e1628}
+.flexcol{display:flex;gap:12px}
+.flex1{flex:1}
+.kv{display:grid;grid-template-columns:180px 1fr;gap:8px;align-items:center}
+pre.log{white-space:pre-wrap;background:#0e1628;border-radius:10px;padding:10px;max-height:220px;overflow:auto;border:1px solid rgba(255,255,255,.08)}
 </style>
 </head>
 <body>
@@ -32,6 +37,7 @@ hr{border:none;border-top:1px solid rgba(255,255,255,.08);margin:12px 0}
   <div class="tabs">
     <div class="tab active" data-tab="draw">카드뽑기</div>
     <div class="tab" data-tab="judo">주도 계산기</div>
+    <div class="tab" data-tab="box">상자깡 시뮬레이터</div>
   </div>
 
   <!-- 카드뽑기 -->
@@ -95,7 +101,7 @@ hr{border:none;border-top:1px solid rgba(255,255,255,.08);margin:12px 0}
       <div id="condList"></div>
       <div class="small" style="margin-top:6px">
         단순: (명성/일수) (연산자) (값) 예) 명성 &gt; 9, 일수 &lt; 21, <b>명성=홀수</b>, <b>일수=짝수</b><br>
-        자리수식: 명(명성 십의 자리)+성(명성 일의 자리)+일(일수 십의 자리)+수(일수 일의 자리) 예) 명+성+일+수 ≥ 10, <b>명+성=짝수</b>
+        자리수식: 명(명성 십의 자리)+성(명성 일의 자리)+일(일수 십의 자리)+수(일수 일의 자리) 또는 <b>명성/일수</b> 자체 사용. 예) 명+성+일+수 ≥ 10, <b>(명성+수)/일 &gt; 2</b>
       </div>
 
       <hr>
@@ -119,10 +125,57 @@ hr{border:none;border-top:1px solid rgba(255,255,255,.08);margin:12px 0}
       <div id="evOut" style="margin-top:10px"></div>
     </div>
   </section>
+
+  <!-- 상자깡 시뮬레이터 -->
+  <section id="box" class="section">
+    <div class="card">
+      <h2>상자깡 시뮬레이터</h2>
+
+      <div class="row">
+        <span class="badge">상자</span>
+        <select id="boxType">
+          <option value="pocket">CorGear 포켓 (2500 루블 / +카트리지20)</option>
+          <option value="folder">CorGear 폴더 (150 루나 / +카트리지20)</option>
+          <option value="advance">CorGear 어드밴스 (750 루나 / +카트리지20)</option>
+        </select>
+        <span class="badge">열 개수</span>
+        <input id="boxCount" type="number" min="1" value="10" style="width:120px">
+        <button id="btnOpen">시뮬레이션 시작</button>
+        <button class="ghost" id="btnClearLog">로그 지우기</button>
+        <button class="ghost" id="btnResetAll">누적 초기화</button>
+      </div>
+
+      <div class="flexcol">
+        <div class="flex1">
+          <h3>장착 아이템(보유 시 제외)</h3>
+          <div id="equipList" class="scroll"></div>
+          <div class="small" style="margin-top:6px">체크된 아이템은 상자 테이블에서 제외되고, 확률이 자동 재정규화됩니다. 상자에서 획득하면 자동 체크됩니다.</div>
+        </div>
+        <div class="flex1">
+          <h3>누적 사용/획득</h3>
+          <div class="card">
+            <div class="kv">
+              <div>누적 사용 루블</div><div id="sumRub">0</div>
+              <div>누적 사용 루나</div><div id="sumLuna">0</div>
+              <div>누적 소모 카트리지</div><div id="sumCart">0</div>
+            </div>
+          </div>
+          <div class="card">
+            <h4 style="margin:0 0 8px 0">누적 획득 아이템</h4>
+            <div id="invTable" class="scroll"></div>
+          </div>
+          <div class="card">
+            <h4 style="margin:0 0 8px 0">최근 결과</h4>
+            <pre class="log" id="boxLog"></pre>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
 </div>
 
 <script>
-/* ───────── 탭 ───────── */
+/* ===== 탭 ===== */
 (function(){
   var tabs=document.querySelectorAll('.tab');
   for(var i=0;i<tabs.length;i++){
@@ -136,7 +189,7 @@ hr{border:none;border-top:1px solid rgba(255,255,255,.08);margin:12px 0}
   }
 })();
 
-/* ───────── 카드뽑기(스킬 포함) ───────── */
+/* ===== 카드뽑기 (이전 기능 유지) ===== */
 var CATEGORIES=["마피아","마피아 팀 보조","경찰 계열","의사","시민 팀 특수","교주"];
 var WEIGHTS=[3,1,1,1,5,1];
 var mafia_support=["스파이","짐승인간","마담","도둑","마녀","과학자","사기꾼","청부업자"];
@@ -159,7 +212,6 @@ var UNIQUE={
  "심리학자":["프로파일링"],"용병":["결사","추적"],"공무원":["색출","감사","공조"],"파파라치":["눈치"],
  "비밀결사":["검시","표식"],"최면술사":["암시"],"점쟁이":["아르카나"],"교주":["설파"]
 };
-
 function weightedChoice(items,w){var t=0;for(var i=0;i<w.length;i++)t+=w[i];var r=Math.random()*t;for(var j=0;j<items.length;j++){r-=w[j];if(r<0)return items[j]}return items[items.length-1]}
 function pickRole(cat){if(cat==="마피아")return"마피아";if(cat==="마피아 팀 보조")return mafia_support[Math.floor(Math.random()*mafia_support.length)];if(cat==="경찰 계열")return police[Math.floor(Math.random()*police.length)];if(cat==="의사")return"의사";if(cat==="시민 팀 특수")return citizen_special[Math.floor(Math.random()*citizen_special.length)];return"교주";}
 function team(role){if(["마피아"].concat(mafia_support).indexOf(role)>=0)return"마피아 팀";if(police.concat(["의사"]).concat(citizen_special).indexOf(role)>=0)return"시민 팀";if(role==="교주")return"교주 팀";return"미정";}
@@ -167,7 +219,6 @@ function skillsFor(role,tier){var cnt=Math.max(0,tier-3);if(cnt===0)return[];var
 function pickTierAdv(){var r=Math.random()*100; if(r<89.1)return 3; if(r<99)return 4; return 5;}
 function drawAdv(){var arr=[];for(var i=0;i<10;i++){var t=pickTierAdv();var role=pickRole(weightedChoice(CATEGORIES,WEIGHTS));arr.push({tier:t,role:role,skills:skillsFor(role,t)});}var all3=true;for(i=0;i<arr.length;i++){if(arr[i].tier!==3){all3=false;break;}}if(all3){var k=Math.floor(Math.random()*arr.length);var r=arr[k];arr[k]={tier:4,role:r.role,skills:skillsFor(r.role,4)};}return arr;}
 function drawFixed(tier,n){var arr=[];for(var i=0;i<n;i++){var role=pickRole(weightedChoice(CATEGORIES,WEIGHTS));arr.push({tier:tier,role:role,skills:skillsFor(role,tier)});}return arr;}
-
 document.getElementById('drawBtn').onclick=function(){
   var mode=document.getElementById('mode').value;
   var n=parseInt(document.getElementById('count').value,10)||10;
@@ -182,7 +233,7 @@ document.getElementById('drawBtn').onclick=function(){
   document.getElementById('drawResult').innerHTML=html;
 };
 
-/* ───────── 주도 계산기 ───────── */
+/* ===== 주도 계산기 ===== */
 /* 명성 분포 */
 var repPct={1:8.2222,2:8.3333,3:8.3333,4:8.3333,5:8.3333,6:8.3333,7:8.3333,8:8.3333,9:1.4444,10:1.1111,11:1.1111,12:1.2222,13:1.0,14:1.1111,15:1.1111,16:1.0,17:1.1111,18:1.0,19:1.0,20:1.0,21:1.0,22:1.0,23:0.8889,24:1.0,25:0.8889,26:0.8889,27:0.8889,28:0.7778,29:0.8889,30:0.7778,31:0.7778,32:0.7778,33:0.7778,34:0.7778,35:0.6667,36:0.6667,37:0.6667,38:0.6667,39:0.6667,40:0.5556,41:0.5556,42:0.5556,43:0.5556,44:0.4444,45:0.4444,46:0.4444,47:0.3333,48:0.3333,49:0.2222,50:0.2222,51:0.1111};
 var repProb={}, repSum=0; for(var rr=1;rr<=51;rr++){repProb[rr]=(repPct[rr]||0)/100; repSum+=repProb[rr];}
@@ -193,16 +244,15 @@ var guildBonus={none:0, wood:0.01, bronze:0.02, silver:0.03, gold:0.04, platinum
 var statueBonus={"0":0,"1":0.025,"2":0.05,"3":0.075,"4":0.10,"5":0.125,"6":0.15};
 
 /* 보상 테이블 (루블) */
-var RUB={"깜짝 엽서":21000,"주사위 엽서":23609.28625,"고급 엽서":6000,"일반 엽서":3000,"4주년 기념 엽서":32000,"산타 엽서":8000,"+3 엽서":9000,"추천장":10000,"고귀한 엽서":15000,"트럼프 엽서": 1000, "기타 엽서":null};
+var RUB={"깜짝 엽서":21000,"주사위 엽서":23609.28625,"고급 엽서":6000,"일반 엽서":3000,"4주년 기념 엽서":32000,"산타 엽서":8000,"+3 엽서":9000,"추천장":10000,"고귀한 엽서":15000,"기타 엽서":null,"트럼프 엽서":100};
 
-/* 조건/보상 UI */
 var condList=document.getElementById('condList');
 document.getElementById('addCond').onclick=function(){addCondition();};
 function addCondition(pref){
   var row=document.createElement('div'); row.className='card';
   row.innerHTML=''
     +'<div class="row">'
-    +'<select class="condType"><option value="simple">단순(명성/일수)</option><option value="digit">자리수식(명·성·일·수)</option></select>'
+    +'<select class="condType"><option value="simple">단순(명성/일수)</option><option value="digit">자리수식(명·성·일·수/명성/일수, + - * /, 괄호)</option></select>'
     +'<span class="simpleArea">'
       +'<select class="varSel"><option value="rep">명성</option><option value="day">일수</option></select>'
       +'<select class="opSel">'
@@ -212,7 +262,7 @@ function addCondition(pref){
       +'<input class="valInp" type="number" step="1" placeholder="값">'
     +'</span>'
     +'<span class="digitArea" style="display:none">'
-      +'<input class="exprInp" style="width:240px" placeholder="예: 명 + 성 + 일 + 수">'
+      +'<input class="exprInp" style="width:300px" placeholder="예: (명성+수)/일 >= 2">'
       +'<select class="op2">'
         +'<option>&gt;</option><option>&gt;=</option><option>&lt;</option><option>&lt;=</option><option>==</option>'
         +'<option value="odd">홀수</option><option value="even">짝수</option>'
@@ -229,24 +279,16 @@ function addCondition(pref){
   var valInp=row.querySelector('.valInp');
   var op2=row.querySelector('.op2');
   var rhs=row.querySelector('.rhs');
-
-  function toggleValue(op, inputEl){
-    if(op==='odd'||op==='even'){ inputEl.style.display='none'; }
-    else{ inputEl.style.display=''; }
-  }
+  function toggleValue(op, inputEl){ if(op==='odd'||op==='even'){ inputEl.style.display='none'; } else { inputEl.style.display=''; } }
   opSel.onchange=function(){ toggleValue(opSel.value, valInp); };
   op2.onchange=function(){ toggleValue(op2.value, rhs); };
-
   typeSel.onchange=function(){ if(typeSel.value==='simple'){simple.style.display='';digit.style.display='none';} else {simple.style.display='none';digit.style.display='';} };
   row.querySelector('.delBtn').onclick=function(){row.remove();};
-
   if(pref){
     typeSel.value=pref.type||'simple'; typeSel.onchange();
     if(pref.type==='simple'){ row.querySelector('.varSel').value=pref.var; opSel.value=pref.op; valInp.value=pref.val; opSel.onchange(); }
     if(pref.type==='digit'){ row.querySelector('.exprInp').value=pref.expr; op2.value=pref.op; rhs.value=pref.val; op2.onchange(); }
-  }else{
-    opSel.onchange(); op2.onchange();
-  }
+  }else{ opSel.onchange(); op2.onchange(); }
 }
 
 var rewardList=document.getElementById('rewardList');
@@ -276,58 +318,30 @@ function addReward(pref){
   if(pref){ sel.value=pref.name; refresh(); row.querySelector('.qty').value=pref.qty; if(pref.name==='기타 엽서'){ row.querySelector('.otherRep').value=pref.rep; row.querySelector('.otherDay').value=pref.day; } }
 }
 
-/* 자리수식 유틸 */
-function tens(n){return Math.floor(n/10);}
-function ones(n){return n%10;}
+/* 자리수식 유틸 (+ - * /, 괄호, 명성/일수 허용) */
+function tens(n){return Math.floor(n/10);} function ones(n){return n%10;}
 function normalizeExpr(expr){
   return String(expr||"")
     .replace(/[\u00A0\u1680\u2000-\u200B\u202F\u205F\u3000\s]+/g,"")
-    .replace(/[＋﹢➕]/g,"+")
-    .replace(/[－﹣−–—₋]/g,"-")
-    .replace(/[×xX*·⋅]/g,"*")
-    .replace(/[÷⁄／]/g,"/")
-    .replace(/\++/g,"+")
-    .replace(/^\+|\+$/g,"");
+    .replace(/[＋﹢➕]/g,"+").replace(/[－﹣−–—₋]/g,"-")
+    .replace(/[×xX*·⋅]/g,"*").replace(/[÷⁄／]/g,"/")
+    .replace(/\++/g,"+").replace(/^\+|\+$/g,"");
 }
-
-/* 자리수식 평가 */
-function evalDigitExpr(expr, rep, day){
-  var e = normalizeExpr(expr);
-  if(!e) return null;
-
-  // 자리수·원값 매핑
-  var map = {
-    "명": Math.floor(rep/10),
-    "성": rep % 10,
-    "일": Math.floor(day/10),
-    "수": day % 10,
-    "명성": rep,   // ← 추가
-    "일수": day    // ← 추가
-  };
-
-  // 긴 토큰(명성|일수) 먼저, 그다음 단일 글자
+function evalDigitExpr(expr,rep,day){
+  var e=normalizeExpr(expr); if(!e) return null;
+  var map={"명":tens(rep),"성":ones(rep),"일":tens(day),"수":ones(day),"명성":rep,"일수":day};
   var jsExpr = e.replace(/(명성|일수|[명성일수])/g, function(m){ return map[m]; });
-
   try{
-    // 숫자/연산자만 허용
     if(/^[0-9+\-*/().]+$/.test(jsExpr)){
       return Function('"use strict";return ('+jsExpr+')')();
     }
     return null;
-  }catch(e){
-    return null;
-  }
-} 
-
-/* 계산 로직 */
+  }catch{ return null; }
+}
 function cmp(a,op,b){
   if(op==='odd')  return (a%2)===1;
   if(op==='even') return (a%2)===0;
-  if(op==='>') return a>b;
-  if(op==='>=')return a>=b;
-  if(op==='<') return a<b;
-  if(op==='<=')return a<=b;
-  if(op==='==')return a==b;
+  if(op==='>') return a>b; if(op==='>=')return a>=b; if(op==='<')return a<b; if(op==='<=')return a<=b; if(op==='==')return a==b;
   return false;
 }
 function parseConditions(){
@@ -335,7 +349,7 @@ function parseConditions(){
   for(var i=0;i<rows.length;i++){
     var row=rows[i]; var type=row.querySelector('.condType').value;
     if(type==='simple'){
-      var v=row.querySelector('.varSel').value; var op=row.querySelector('.opSel').value; var val = (op==='odd'||op==='even') ? null : Number(row.querySelector('.valInp').value);
+      var v=row.querySelector('.varSel').value; var op=row.querySelector('.opSel').value; var val=(op==='odd'||op==='even')? null : Number(row.querySelector('.valInp').value);
       if(!(op==='odd'||op==='even') && !isFinite(val)) continue;
       conds.push({type:type,v:v,op:op,val:val});
     }else{
@@ -365,7 +379,7 @@ function successProb(conds){
         var c=conds[i], x;
         if(c.type==='simple'){
           x=(c.v==='rep')?r:d;
-          if(!cmp(x,c.op, (c.val==null?0:c.val) )){ ok=false; break; }
+          if(!cmp(x,c.op,(c.val==null?0:c.val))){ ok=false; break; }
         }else{
           var val=evalDigitExpr(c.expr,r,d);
           if(val===null || !cmp(val,c.op,(c.val==null?0:c.val))){ ok=false; break; }
@@ -381,13 +395,10 @@ function applyBonuses(baseSum){
   var s=statueBonus[document.getElementById('statue').value];
   return baseSum*(1+g+s);
 }
-function rubToLuna(rub){ var rate=Number(document.getElementById('rate').value||0); return rub*rate/1000000; }
+function rubToLuna(rub){ var rate=Number(document.getElementById('rate').value||0); return rate>0 ? rub*rate/1000000 : 0; }
+function lunaToRub(luna){ var rate=Number(document.getElementById('rate').value||0); return rate>0 ? luna*1000000/rate : 0; }
 function fmt(n,d){ return Number(n).toLocaleString(undefined,{maximumFractionDigits:(d||4)}); }
-function lunaToRub(luna){
-  var rate = Number(document.getElementById('rate').value||0);
-  if(rate<=0) return 0;
-  return luna * 1000000 / rate;
-}
+
 document.getElementById('fillExample').onclick=function(){
   condList.innerHTML=''; rewardList.innerHTML='';
   addCondition({type:'simple',var:'rep',op:'>',val:9});
@@ -396,33 +407,219 @@ document.getElementById('fillExample').onclick=function(){
   document.getElementById('rate').value=1050; document.getElementById('guild').value='none'; document.getElementById('statue').value='0';
 };
 document.getElementById('calcEV').onclick=function(){
-  var conds=parseConditions(); var rewards=parseRewards();
-  var P=successProb(conds);
+  var conds=parseConditions(); var rewards=parseRewards(); var P=successProb(conds);
   var baseRub=0; for(var i=0;i<rewards.length;i++){baseRub+=rewards[i].base*rewards[i].qty;}
   var finalRub=applyBonuses(baseRub);
-  finalRub += lunaToRub(baseRub / 100 / 42);
-
-  var EV_rub=P*finalRub;
-  var EV_luna=rubToLuna(EV_rub);
-  var baseExchange = 23609.28625;
-  baseExchange += lunaToRub(baseExchange / 100 / 42);
-  var percentGain = (EV_rub / baseExchange) * 100;
+  var EV_rub = P*finalRub;
+  var EV_luna = rubToLuna(EV_rub);
+  // 명성 보정(42명성=1루나, 길드/동상 보너스 미적용)
+  var qtyDice=0; for(var j=0;j<rewards.length;j++){ if(rewards[j].name==="주사위 엽서") qtyDice+=rewards[j].qty; }
+  var REP_GAIN=11.516725;
+  var EV_rep_luna = P*qtyDice*REP_GAIN/42;
+  var EV_rep_rub  = lunaToRub(EV_rep_luna);
+  // 최종(보정 포함)만 표기
+  EV_luna += EV_rep_luna; EV_rub += EV_rep_rub;
   var html='<table><tbody>'
     +'<tr><th style="width:200px">성공확률</th><td><b>'+fmt(P*100,4)+' %</b></td></tr>'
     +'<tr><th>보상 루블(기본 합)</th><td>'+fmt(baseRub,2)+' 루블</td></tr>'
     +'<tr><th>보너스 적용</th><td>'+fmt(finalRub,2)+' 루블</td></tr>'
-    +'<tr><th>기대 루블(EV)</th><td>'+fmt(EV_rub,2)+' 루블</td></tr>'
-    +'<tr><th>기대 루나(EV)</th><td><b>'+fmt(EV_luna,4)+' 루나</b></td></tr>'
-    + '<tr><th>주교 대비 이익</th><td><b>' + fmt(percentGain,2) + ' %</b></td></tr>'
+    +'<tr><th>최종 기대 루블(EV)</th><td><b>'+fmt(EV_rub,2)+' 루블</b></td></tr>'
+    +'<tr><th>최종 기대 루나(EV)</th><td><b>'+fmt(EV_luna,4)+' 루나</b></td></tr>'
     +'</tbody></table>';
   document.getElementById('evOut').innerHTML=html;
 };
-
-/* 초기 상태: 환율 1050, 길드 없음, 동상 0, 기본 보상 = 주사위 엽서 × 1 */
+// 기본 값
 addReward({name:'주사위 엽서',qty:1});
 document.getElementById('rate').value=1050;
 document.getElementById('guild').value='none';
 document.getElementById('statue').value='0';
+
+/* ===== 상자깡 시뮬레이터 ===== */
+
+/* 장착 아이템 목록 */
+const EQUIP_ITEMS = [
+"프로토콜 옵저버 해커 스킨","시뮬라크르 마술사 스킨","코기 어시스턴트 테두리","픽셀이 빛나는 밤 테두리","멍멍 대화창","매직 쇼 이펙트","시크릿 프롬프트",
+"실험 설계자 심리학자 스킨","시스템 브레이커 해커 스킨","실험체 시민 스킨","글리치 스크린 테두리","생체 추적 신호 테두리","프라이멀 코드","코어 터미널","네트워크 속 무법자",
+"연구시설 경비원 군인 스킨","실종자 수색대 용병 스킨","실험용 수조 테두리","생존 전문가 테두리","주입용 약물","전문가용 전술 배낭","실험체 말풍선","가정교사 공무원 스킨",
+"레이디 마담 스킨","녹슨 장미 테두리","파티용 드레스 테두리","말린 장미 회랑","고귀한 예법","저택의 비밀 명부","메이드 스파이 스킨","호스트 도굴꾼 스킨","메이드의 해골",
+"저택에서의 추억","연구원 간호사 스킨","실험체 도둑 스킨","잃어버린 연구 보고서 테두리","실험체 식별표","Butterfly corp. 사원증","개조 실험체 짐승인간 스킨","복제 사이보그 경찰 스킨",
+"42시티의 흑막 과학자 스킨","개조된 날개 명패","개조된 발톱 명패","사이보그 테두리","Butterfly corp. 간부 지갑","신비한 합창"
+];
+
+/* 드랍 테이블 (name, min, max, prob %) */
+const BOX_DATA = {
+  pocket: [
+    // 0.01% 희귀 다수
+    ["프로토콜 옵저버 해커 스킨",1,1,0.01],["시뮬라크르 마술사 스킨",1,1,0.01],["코기 어시스턴트 테두리",1,1,0.01],["픽셀이 빛나는 밤 테두리",1,1,0.01],["멍멍 대화창",1,1,0.01],["매직 쇼 이펙트",1,1,0.01],["시크릿 프롬프트",1,1,0.01],["실험 설계자 심리학자 스킨",1,1,0.01],["시스템 브레이커 해커 스킨",1,1,0.01],["실험체 시민 스킨",1,1,0.01],["글리치 스크린 테두리",1,1,0.01],["생체 추적 신호 테두리",1,1,0.01],["프라이멀 코드",1,1,0.01],["코어 터미널",1,1,0.01],["네트워크 속 무법자",1,1,0.01],["연구시설 경비원 군인 스킨",1,1,0.01],["실종자 수색대 용병 스킨",1,1,0.01],["실험용 수조 테두리",1,1,0.01],["생존 전문가 테두리",1,1,0.01],["주입용 약물",1,1,0.01],["전문가용 전술 배낭",1,1,0.01],["실험체 말풍선",1,1,0.01],["가정교사 공무원 스킨",1,1,0.01],["레이디 마담 스킨",1,1,0.01],["녹슨 장미 테두리",1,1,0.01],["파티용 드레스 테두리",1,1,0.01],["말린 장미 회랑",1,1,0.01],["고귀한 예법",1,1,0.01],["저택의 비밀 명부",1,1,0.01],["메이드 스파이 스킨",1,1,0.01],["호스트 도굴꾼 스킨",1,1,0.01],["메이드의 해골",1,1,0.01],["저택에서의 추억",1,1,0.01],["연구원 간호사 스킨",1,1,0.01],["실험체 도둑 스킨",1,1,0.01],["잃어버린 연구 보고서 테두리",1,1,0.01],["실험체 식별표",1,1,0.01],["Butterfly corp. 사원증",1,1,0.01],["개조 실험체 짐승인간 스킨",1,1,0.01],["복제 사이보그 경찰 스킨",1,1,0.01],["42시티의 흑막 과학자 스킨",1,1,0.01],["개조된 날개 명패",1,1,0.01],["개조된 발톱 명패",1,1,0.01],["사이보그 테두리",1,1,0.01],["Butterfly corp. 간부 지갑",1,1,0.01],
+    // 일반 보상
+    ["사망확인서",20,30,10],["밀서",7,10,10],["사망광고판",2,3,10],["부고 기사",2,3,10],["확성기",1,1,4],
+    ["일반 엽서",2,2,10],["경고 엽서",1,1,10],["고급 엽서",1,1,2],["이력서",1,1,2],["일반 티켓",2,2,10],
+    ["1티어 카드",1,1,10],["돌연변이 DNA",1,1,4],["나비 문양 엽서",1,1,4],["에뮬레이션 엽서",1,1,3.55]
+  ],
+  folder: [
+    // 상단 희귀
+    ["프로토콜 옵저버 해커 스킨",1,1,0.7],["시뮬라크르 마술사 스킨",1,1,0.7],["코기 어시스턴트 테두리",1,1,0.7],["픽셀이 빛나는 밤 테두리",1,1,0.7],["멍멍 대화창",1,1,0.7],["매직 쇼 이펙트",1,1,0.7],
+    ["시크릿 프롬프트",1,1,0.4],
+    ["실험 설계자 심리학자 스킨",1,1,0.1],["시스템 브레이커 해커 스킨",1,1,0.1],["실험체 시민 스킨",1,1,0.1],["글리치 스크린 테두리",1,1,0.1],["생체 추적 신호 테두리",1,1,0.1],["프라이멀 코드",1,1,0.1],["코어 터미널",1,1,0.1],
+    ["네트워크 속 무법자",1,1,0.08],["연구시설 경비원 군인 스킨",1,1,0.1],["실종자 수색대 용병 스킨",1,1,0.1],["실험용 수조 테두리",1,1,0.1],["생존 전문가 테두리",1,1,0.1],["주입용 약물",1,1,0.1],["전문가용 전술 배낭",1,1,0.1],
+    ["실험체 말풍선",1,1,0.08],["가정교사 공무원 스킨",1,1,0.1],["레이디 마담 스킨",1,1,0.1],["녹슨 장미 테두리",1,1,0.1],["파티용 드레스 테두리",1,1,0.1],["말린 장미 회랑",1,1,0.1],["고귀한 예법",1,1,0.1],
+    ["저택의 비밀 명부",1,1,0.08],["메이드 스파이 스킨",1,1,0.1],["호스트 도굴꾼 스킨",1,1,0.1],["메이드의 해골",1,1,0.1],["저택에서의 추억",1,1,0.1],
+    ["연구원 간호사 스킨",1,1,0.1],["실험체 도둑 스킨",1,1,0.1],["잃어버린 연구 보고서 테두리",1,1,0.1],["실험체 식별표",1,1,0.1],
+    ["Butterfly corp. 사원증",1,1,0.08],["개조 실험체 짐승인간 스킨",1,1,0.1],["복제 사이보그 경찰 스킨",1,1,0.1],["42시티의 흑막 과학자 스킨",1,1,0.1],
+    ["개조된 날개 명패",1,1,0.1],["개조된 발톱 명패",1,1,0.1],["사이보그 테두리",1,1,0.1],["Butterfly corp. 간부 지갑",1,1,0.08],
+    // 일반 드랍
+    ["스포이트",1,1,4.5],["마법의 염색약",5,7,4.5],["신분증",1,1,4.5],["사망광고판",32,40,4.5],["부고 기사",32,40,4.5],
+    ["고대의 제작서",2,3,4.5],["마법의 연마제",2,3,4.5],["명장의 망치",2,3,4.5],["큐피드의 화살",1,1,4.5],
+    ["고급 엽서",16,20,4.5],["징벌의 엽서",2,2,4.5],["깜짝 엽서",2,3,4.5],["확성기",11,14,4.5],["3티어 스킬 변경권",2,2,4.5],
+    ["2티어 카드",2,3,5],["3티어 카드",1,1,5],
+    ["돌연변이 DNA",1,2,6.3],["나비 문양 엽서",4,5,6.3],["에뮬레이션 엽서",3,4,6.1]
+  ],
+  advance: [
+    ["프로토콜 옵저버 해커 스킨",1,1,3],["시뮬라크르 마술사 스킨",1,1,3],["코기 어시스턴트 테두리",1,1,3],["픽셀이 빛나는 밤 테두리",1,1,3],["멍멍 대화창",1,1,3],["매직 쇼 이펙트",1,1,3],
+    ["시크릿 프롬프트",1,1,2.5],
+    ["실험 설계자 심리학자 스킨",1,1,0.7],["시스템 브레이커 해커 스킨",1,1,0.7],["실험체 시민 스킨",1,1,0.7],["글리치 스크린 테두리",1,1,0.7],["생체 추적 신호 테두리",1,1,0.7],["프라이멀 코드",1,1,0.7],["코어 터미널",1,1,0.7],
+    ["네트워크 속 무법자",1,1,0.5],
+    ["연구시설 경비원 군인 스킨",1,1,0.7],["실종자 수색대 용병 스킨",1,1,0.7],["실험용 수조 테두리",1,1,0.7],["생존 전문가 테두리",1,1,0.7],["주입용 약물",1,1,0.7],["전문가용 전술 배낭",1,1,0.7],
+    ["실험체 말풍선",1,1,0.5],
+    ["가정교사 공무원 스킨",1,1,0.7],["레이디 마담 스킨",1,1,0.7],["녹슨 장미 테두리",1,1,0.7],["파티용 드레스 테두리",1,1,0.7],["말린 장미 회랑",1,1,0.7],["고귀한 예법",1,1,0.7],
+    ["저택의 비밀 명부",1,1,0.5],["메이드 스파이 스킨",1,1,0.7],["호스트 도굴꾼 스킨",1,1,0.7],["메이드의 해골",1,1,0.7],["저택에서의 추억",1,1,0.7],
+    ["연구원 간호사 스킨",1,1,0.7],["실험체 도둑 스킨",1,1,0.7],["잃어버린 연구 보고서 테두리",1,1,0.7],["실험체 식별표",1,1,0.7],
+    ["Butterfly corp. 사원증",1,1,0.5],["개조 실험체 짐승인간 스킨",1,1,0.7],["복제 사이보그 경찰 스킨",1,1,0.7],["42시티의 흑막 과학자 스킨",1,1,0.7],
+    ["개조된 날개 명패",1,1,0.7],["개조된 발톱 명패",1,1,0.7],["사이보그 테두리",1,1,0.7],["Butterfly corp. 간부 지갑",1,1,0.5],
+    ["신비한 합창",1,1,0.5],
+    ["마법의 염색약",25,28,5],["깜짝 엽서",9,11,5],["징벌의 엽서",8,9,5],["주사위 엽서",16,18,5],["4티어 스킬 변경권",2,2,5],["4티어 카드",1,1,5],["3티어 카드",3,4,5],
+    ["돌연변이 DNA",5,7,6.2],["나비 문양 엽서",19,21,6.2],["에뮬레이션 엽서",15,17,6.0]
+  ]
+};
+/* 상자 단가/카트리지 */
+const BOX_COST = { pocket:{rub:2500,luna:0}, folder:{rub:0,luna:150}, advance:{rub:0,luna:750} };
+const CART_PER_BOX = 20;
+
+/* 저장 구조 */
+const SAVE_DEFAULT = { inv:{}, equip:{}, rub:0, luna:0, cart:0, log:[] };
+let SAVE = JSON.parse(localStorage.getItem('cg_save')||'null') || structuredClone(SAVE_DEFAULT);
+
+/* 장착 아이템 UI 생성 */
+(function buildEquipUI(){
+  const box = document.getElementById('equipList');
+  let html='';
+  EQUIP_ITEMS.forEach(name=>{
+    const id = 'equip_'+btoa(unescape(encodeURIComponent(name))).replace(/=/g,'');
+    const checked = SAVE.equip[name] ? 'checked' : '';
+    html += `<label style="display:inline-flex;gap:6px;align-items:center;margin:4px 8px 4px 0">
+      <input type="checkbox" id="${id}" data-name="${name}" ${checked}> ${name}
+    </label>`;
+  });
+  box.innerHTML=html;
+  box.querySelectorAll('input[type=checkbox]').forEach(el=>{
+    el.addEventListener('change',()=>{
+      const name=el.dataset.name;
+      SAVE.equip[name]=el.checked;
+      persist(); refreshTotals(); // 확률은 시뮬레이션 때마다 재산정
+    });
+  });
+})();
+
+/* 누적 표시/인벤토리 렌더 */
+function renderInventory(){
+  const cont=document.getElementById('invTable');
+  const entries=Object.entries(SAVE.inv).filter(([k,v])=>v>0).sort((a,b)=>a[0].localeCompare(b[0]));
+  if(entries.length===0){ cont.innerHTML='<div class="muted">아직 획득한 아이템이 없습니다.</div>'; return; }
+  let html='<table><thead><tr><th>아이템</th><th style="width:140px">누적 수량</th></tr></thead><tbody>';
+  for(const [name,cnt] of entries){ html+=`<tr><td>${name}</td><td>${fmt(cnt,0)}</td></tr>`; }
+  html+='</tbody></table>'; cont.innerHTML=html;
+}
+function refreshTotals(){
+  document.getElementById('sumRub').textContent = fmt(SAVE.rub,0);
+  document.getElementById('sumLuna').textContent = fmt(SAVE.luna,0);
+  document.getElementById('sumCart').textContent = fmt(SAVE.cart,0);
+  renderInventory();
+  renderLog();
+}
+function renderLog(){
+  const logEl=document.getElementById('boxLog');
+  if(!SAVE.log || SAVE.log.length===0){ logEl.textContent=''; return; }
+  logEl.textContent = SAVE.log.slice(-100).join('\n');
+}
+function persist(){ localStorage.setItem('cg_save', JSON.stringify(SAVE)); }
+
+/* 보조: 필터 + 가중선택(정규화 생략: 합계로 직접 가중) */
+function isEquipped(name){ return !!SAVE.equip[name]; }
+function filteredTable(kind){
+  const raw=BOX_DATA[kind];
+  const filtered=[];
+  for(const [name,min,max,prob] of raw){
+    if(EQUIP_ITEMS.includes(name) && isEquipped(name)) continue; // 장착 제외
+    filtered.push({name,min,max,prob});
+  }
+  return filtered;
+}
+function weightedPick(list){
+  // 합계(제외된 항목을 빼고 남은 확률 합)
+  let total=0; for(const it of list) total+=it.prob;
+  let r=Math.random()*total;
+  for(const it of list){ r-=it.prob; if(r<0) return it; }
+  return list[list.length-1];
+}
+function randInt(a,b){ return Math.floor(Math.random()*(b-a+1))+a; }
+
+/* 시뮬 한 번 */
+function openOne(kind){
+  const table=filteredTable(kind);
+  if(table.length===0) return null;
+  const pick = weightedPick(table);
+  const qty = (pick.min===pick.max)? pick.min : randInt(pick.min,pick.max);
+  // 획득 반영
+  SAVE.inv[pick.name]=(SAVE.inv[pick.name]||0)+qty;
+  // 장착 아이템이면 자동 체크
+  if(EQUIP_ITEMS.includes(pick.name)){
+    SAVE.equip[pick.name]=true;
+    // 해당 체크박스 UI도 체크
+    const id='equip_'+btoa(unescape(encodeURIComponent(pick.name))).replace(/=/g,'');
+    const el=document.getElementById(id); if(el) el.checked=true;
+  }
+  return {name:pick.name, qty};
+}
+
+/* 시뮬 실행 */
+document.getElementById('btnOpen').onclick=function(){
+  const kind=document.getElementById('boxType').value;
+  const n=Math.max(1, parseInt(document.getElementById('boxCount').value,10)||1);
+  const cost=BOX_COST[kind];
+  const totalCart = n*CART_PER_BOX;
+  SAVE.cart += totalCart;
+  SAVE.rub  += (cost.rub||0)*n;
+  SAVE.luna += (cost.luna||0)*n;
+
+  let lines=[];
+  for(let i=0;i<n;i++){
+    const res=openOne(kind);
+    if(res) lines.push(`${res.name} × ${res.qty}`);
+  }
+  if(lines.length===0) lines.push('(드랍 테이블이 모두 제외되어 뽑을 수 없음)');
+
+  // 로그 저장 (최근 100만 줄 같은 거 방지로 슬라이스)
+  SAVE.log = (SAVE.log||[]).concat([`[${new Date().toLocaleString()}] ${kind} × ${n}개 오픈 (${totalCart} 카트리지)`]).concat(lines);
+  if(SAVE.log.length>5000) SAVE.log = SAVE.log.slice(-2000);
+
+  persist();
+  refreshTotals();
+};
+
+/* 초기화/로그지우기 */
+document.getElementById('btnClearLog').onclick=function(){
+  SAVE.log=[]; persist(); renderLog();
+};
+document.getElementById('btnResetAll').onclick=function(){
+  if(!confirm('모든 누적(루블/루나/카트리지/인벤토리/장착/로그)을 초기화할까요?')) return;
+  SAVE = structuredClone(SAVE_DEFAULT);
+  // 장착 UI도 모두 해제
+  document.querySelectorAll('#equipList input[type=checkbox]').forEach(el=>{ el.checked=false; });
+  persist(); refreshTotals();
+};
+
+/* 초기 렌더 */
+refreshTotals();
 </script>
 </body>
 </html>
